@@ -311,9 +311,9 @@ impl DepGraph {
         None
     }
 
-    pub fn find(&self, name: &str, ver: &str) -> Option<usize> {
+    pub fn find(&self, name: &str, ver: &str, source: &str) -> Option<usize> {
         for (i, d) in self.nodes.iter().enumerate() {
-            if d.name == name && d.ver == ver {
+            if d.name == name && d.ver == ver && d.source == source {
                 return Some(i);
             }
         }
