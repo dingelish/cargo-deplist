@@ -51,15 +51,17 @@ impl Project {
     ) -> Result<(Vec<RootCrate>, RootDepsMap)> {
         let manifest_toml = util::toml_from_file(manifest_path)?;
 
+        let empty_string = Value::String("".to_string());
+
         // Get the name and version of the root project.
         let root_crates_tomls = {
             if let Some(table) = manifest_toml.get("package") {
                 if let Some(table) = table.as_table() {
-                    if let (Some(&Value::String(ref name)), Some(&Value::String(ref ver))) =
-                        (table.get("name"), table.get("version"))
+                    if let (Some(&Value::String(ref name)), Some(&Value::String(ref ver)), Some(&Value::String(ref source))) =
+                        (table.get("name"), table.get("version"), table.get("source").or(Some(&empty_string)))
                     {
-                        let (name, ver) = (name.to_string(), ver.to_string());
-                        vec![(RootCrate { name, ver }, manifest_toml)]
+                        let (name, ver, source) = (name.to_string(), ver.to_string(), source.to_string());
+                        vec![(RootCrate { name, ver, source }, manifest_toml)]
                     } else {
                         return Err(Error::Toml(
                             "No 'name' or 'version' fields in [package] table".into(),
@@ -169,12 +171,12 @@ impl Project {
         }
 
         // Check that all root crates were found in the lock files.
-        for &RootCrate { ref name, ref ver } in root_crates.iter() {
+        for &RootCrate { ref name, ref ver, ref source } in root_crates.iter() {
             if dep_is_excluded(name, self.cfg.clone()) {
                 continue;
             }
 
-            if dg.find(&name, &ver).is_none() {
+            if dg.find(&name, &ver, &source).is_none() {
                 return Err(Error::Toml(format!(
                     "Missing 'name': {} and 'version': {} in lock file",
                     name, ver

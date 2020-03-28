@@ -321,7 +321,7 @@ impl DepGraph {
     }
 
     pub fn find_or_add(&mut self, name: &str, ver: &str, source: &str) -> usize {
-        if let Some(i) = self.find(name, ver) {
+        if let Some(i) = self.find(name, ver, source) {
             return i;
         }
         self.nodes.push(ResolvedDep::new(

@@ -14,6 +14,7 @@ pub enum DepKind {
 pub struct RootCrate {
     pub name: String,
     pub ver: String,
+    pub source: String,
 }
 
 #[derive(Clone, Debug, PartialEq)]
