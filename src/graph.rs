@@ -131,8 +131,6 @@ impl DepGraph {
             }
         }
 
-        println!("l = {:?}", l);
-
         if self.edges.is_empty() {
             // Add back the edges, this time in topological order.
             for n in l.iter() {
