@@ -72,6 +72,7 @@ pub struct DepGraph {
     pub edges: Vec<Edge>,
     pub root_deps_map: RootDepsMap,
     pub cfg: Config,
+    pub sorted_nodes: Vec<Node>,
 }
 
 impl DepGraph {
@@ -81,11 +82,12 @@ impl DepGraph {
             edges: vec![],
             root_deps_map: HashMap::new(),
             cfg,
+            sorted_nodes: vec![],
         }
     }
 
     /// Performs a topological sort on the edges.
-    pub fn topological_sort(&mut self) -> Result<()> {
+    pub fn topological_sort(&mut self) -> Result<Vec<Node>> {
         // Create a clone of the nodes list so we can remove parents and children without affecting
         // the original list. We work on the original list of edges, clearing it as we go, because
         // we construct a new one at the end, in topological order.
@@ -129,6 +131,8 @@ impl DepGraph {
             }
         }
 
+        println!("l = {:?}", l);
+
         if self.edges.is_empty() {
             // Add back the edges, this time in topological order.
             for n in l.iter() {
@@ -147,7 +151,7 @@ impl DepGraph {
                 }
             }
 
-            Ok(())
+            Ok(l)
         } else {
             Err(Error::Generic("Cycle detected in dependency graph".into()))
         }
@@ -287,8 +291,8 @@ impl DepGraph {
         }
     }
 
-    pub fn add_child(&mut self, parent: usize, dep_name: &str, dep_ver: &str) {
-        let child = self.find_or_add(dep_name, dep_ver);
+    pub fn add_child(&mut self, parent: usize, dep_name: &str, dep_ver: &str, source: &str) {
+        let child = self.find_or_add(dep_name, dep_ver, source);
 
         if parent == child {
             return;
@@ -316,88 +320,100 @@ impl DepGraph {
         None
     }
 
-    pub fn find_or_add(&mut self, name: &str, ver: &str) -> usize {
+    pub fn find_or_add(&mut self, name: &str, ver: &str, source: &str) -> usize {
         if let Some(i) = self.find(name, ver) {
             return i;
         }
-        self.nodes
-            .push(ResolvedDep::new(name.to_owned(), ver.to_owned()));
+        self.nodes.push(ResolvedDep::new(
+            name.to_owned(),
+            ver.to_owned(),
+            source.to_owned(),
+        ));
         self.nodes.len() - 1
     }
 
     pub fn render_to<W: Write>(self, output: &mut W) -> Result<()> {
-        // Keep track of all added nodes.
-        let mut nodes_added = vec![];
-
-        writeln!(output, "digraph dependencies {{")?;
-
-        // Output all non-subgraph nodes.
-        for (i, dep) in self.nodes.iter().enumerate() {
-            // Skip subgraph nodes, will be declared in the subgraph.
-            if let Some(sub_deps) = &self.cfg.subgraph {
-                if sub_deps.contains(&dep.name) {
-                    continue;
-                }
-            }
-
-            // Skip nodes below the maximum depth, if specified.
-            // These nodes will still be output later if specified in a subgraph.
-            if let Some(depth) = self.cfg.depth {
-                // The depth can be None if nodes have been filtered out.
-                if dep.depth.is_none() || dep.depth.unwrap() > depth {
-                    continue;
-                }
-            }
-
-            // Skip orphan nodes.
-            // Orphan nodes will still be output later if specified in a subgraph.
-            if !self.cfg.include_orphans {
-                if let DepKind::Unknown = dep.kind() {
-                    continue;
-                }
-            }
-
-            // Add the node.
-            write!(output, "\tn{}", i)?;
-            dep.label(output, &self)?;
-            nodes_added.push(i);
-        }
-        writeln!(output)?;
-
-        // Output any subgraph nodes.
-        if let Some(sub_deps) = &self.cfg.subgraph {
-            writeln!(output, "\tsubgraph cluster_subgraph {{")?;
-            if let Some(sub_name) = &self.cfg.subgraph_name {
-                writeln!(output, "\t\tlabel=\"{}\";", sub_name)?;
-            }
-            writeln!(output, "\t\tcolor=brown;")?;
-            writeln!(output, "\t\tstyle=dashed;")?;
-            writeln!(output)?;
-
-            for (i, dep) in self.nodes.iter().enumerate() {
-                if sub_deps.contains(&dep.name) {
-                    write!(output, "\t\tn{}", i)?;
-                    dep.label(output, &self)?;
-
-                    nodes_added.push(i);
-                }
-            }
-
-            writeln!(output, "\t}}\n")?;
+        // Yu: output the sorted nodes at the beginning.
+        for n in &self.sorted_nodes {
+            writeln!(
+                output,
+                "{:<4}\t{:<30}\t{}\t{}",
+                n, self.nodes[*n].name, self.nodes[*n].ver, self.nodes[*n].source
+            )?;
         }
 
-        // Output edges.
-        for ed in &self.edges {
-            // Only add edges if both nodes exist in the graph.
-            if !(nodes_added.contains(&ed.0) && nodes_added.contains(&ed.1)) {
-                continue;
-            }
+        //// Keep track of all added nodes.
+        // let mut nodes_added = vec![];
 
-            write!(output, "\t{}", ed)?;
-            ed.label(output, &self)?;
-        }
+        // writeln!(output, "digraph dependencies {{")?;
 
-        writeln!(output, "}}")?;
+        //// Output all non-subgraph nodes.
+        // for (i, dep) in self.nodes.iter().enumerate() {
+        //    // Skip subgraph nodes, will be declared in the subgraph.
+        //    if let Some(sub_deps) = &self.cfg.subgraph {
+        //        if sub_deps.contains(&dep.name) {
+        //            continue;
+        //        }
+        //    }
+
+        //    // Skip nodes below the maximum depth, if specified.
+        //    // These nodes will still be output later if specified in a subgraph.
+        //    if let Some(depth) = self.cfg.depth {
+        //        // The depth can be None if nodes have been filtered out.
+        //        if dep.depth.is_none() || dep.depth.unwrap() > depth {
+        //            continue;
+        //        }
+        //    }
+
+        //    // Skip orphan nodes.
+        //    // Orphan nodes will still be output later if specified in a subgraph.
+        //    if !self.cfg.include_orphans {
+        //        if let DepKind::Unknown = dep.kind() {
+        //            continue;
+        //        }
+        //    }
+
+        //    // Add the node.
+        //    write!(output, "\tn{}", i)?;
+        //    dep.label(output, &self)?;
+        //    nodes_added.push(i);
+        //}
+        // writeln!(output)?;
+
+        //// Output any subgraph nodes.
+        // if let Some(sub_deps) = &self.cfg.subgraph {
+        //    writeln!(output, "\tsubgraph cluster_subgraph {{")?;
+        //    if let Some(sub_name) = &self.cfg.subgraph_name {
+        //        writeln!(output, "\t\tlabel=\"{}\";", sub_name)?;
+        //    }
+        //    writeln!(output, "\t\tcolor=brown;")?;
+        //    writeln!(output, "\t\tstyle=dashed;")?;
+        //    writeln!(output)?;
+
+        //    for (i, dep) in self.nodes.iter().enumerate() {
+        //        if sub_deps.contains(&dep.name) {
+        //            write!(output, "\t\tn{}", i)?;
+        //            dep.label(output, &self)?;
+
+        //            nodes_added.push(i);
+        //        }
+        //    }
+
+        //    writeln!(output, "\t}}\n")?;
+        //}
+
+        //// Output edges.
+        // for ed in &self.edges {
+        //    // Only add edges if both nodes exist in the graph.
+        //    if !(nodes_added.contains(&ed.0) && nodes_added.contains(&ed.1)) {
+        //        continue;
+        //    }
+
+        //    write!(output, "\t{}", ed)?;
+        //    ed.label(output, &self)?;
+        //}
+
+        // writeln!(output, "}}")?;
 
         Ok(())
     }

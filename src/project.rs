@@ -32,7 +32,7 @@ impl Project {
         let mut dg = self.parse_lock_file(lock_path, &root_crates, root_deps_map)?;
 
         // Sort the graph.
-        dg.topological_sort()?;
+        dg.sorted_nodes = dg.topological_sort()?;
 
         // Set the kind of dependency on each dep.
         dg.set_resolved_kind()?;
@@ -198,6 +198,7 @@ fn parse_package(
     packages: &Array,
     root_crates: &[RootCrate],
 ) -> Result<()> {
+    let empty_src = Value::String("".to_string());
     let name = pkg
         .get("name")
         .expect("No 'name' field in Cargo.lock [package] table")
@@ -210,12 +211,19 @@ fn parse_package(
         .as_str()
         .expect("'version' field of [package] table in Cargo.lock was not a valid string")
         .to_owned();
+    let source = pkg
+        .get("source")
+        //.expect("No 'source' field in Cargo.lock [package] table")
+        .unwrap_or(&empty_src)
+        .as_str()
+        .expect("'source ' field of [package] table in Cargo.lock was not a valid string")
+        .to_owned();
 
     if dep_is_excluded(&name, dg.cfg.clone()) {
         return Ok(());
     }
 
-    let id = dg.find_or_add(&name, &ver);
+    let id = dg.find_or_add(&name, &ver, &source);
 
     if dg.root_deps_map.contains_key(&name) {
         // If this is a root crate, check that this crate is in `root_crates` with the same version.
@@ -249,6 +257,14 @@ fn parse_package(
                     .as_str()
                     .unwrap()
             };
+            let dep_source = packages
+                .iter()
+                .find(|pkg| pkg.get("name").unwrap().as_str().unwrap() == dep_name)
+                .unwrap()
+                .get("source")
+                .unwrap_or(&empty_src)
+                .as_str()
+                .unwrap();
 
             if dep_is_excluded(&dep_name, dg.cfg.clone()) {
                 continue;
@@ -261,7 +277,7 @@ fn parse_package(
                 }
             }
 
-            dg.add_child(id, &dep_name, dep_ver);
+            dg.add_child(id, &dep_name, dep_ver, dep_source);
         }
     }
 

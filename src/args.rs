@@ -1,7 +1,7 @@
 use std::{result::Result, str::FromStr};
 use structopt::{clap::AppSettings::ColoredHelp, StructOpt};
 
-use cargo_deps::Config;
+use cargo_deps_ding::Config;
 
 const USAGE: &str = "\
 cargo-deps writes a graph in dot format to standard output.
