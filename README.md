@@ -1,3 +1,7 @@
+# modified version of cargo-deps
+
+**This tool is directly derived from cargo-deps**. It generates a topological-sorted list of dependencies which is uniqued by (name x version x source).
+
 # cargo-deps
 
 [![Build Status](https://travis-ci.com/m-cat/cargo-deps.svg?branch=master)](https://travis-ci.com/m-cat/cargo-deps)
