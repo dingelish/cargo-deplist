@@ -10,7 +10,7 @@ use std::{
 };
 use structopt::StructOpt;
 
-use cargo_deps_ding::{get_dep_graph, render_dep_graph, Result};
+use cargo_deplist::{get_dep_graph, render_dep_graph, Result};
 
 mod args;
 

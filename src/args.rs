@@ -1,7 +1,7 @@
 use std::{result::Result, str::FromStr};
 use structopt::{clap::AppSettings::ColoredHelp, StructOpt};
 
-use cargo_deps_ding::Config;
+use cargo_deplist::Config;
 
 const USAGE: &str = "\
 cargo-deps writes a graph in dot format to standard output.
@@ -11,7 +11,7 @@ cargo-deps writes a graph in dot format to standard output.
 #[derive(Debug, StructOpt)]
 #[structopt(bin_name = "cargo")]
 pub enum Command {
-    #[structopt(name = "deps", usage = USAGE, author, setting(ColoredHelp))]
+    #[structopt(name = "deplist", usage = USAGE, author, setting(ColoredHelp))]
     /// Cargo subcommand for building dependency graphs of Rust projects.
     Deps(Args),
 }
