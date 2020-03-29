@@ -10,7 +10,7 @@ exclude = ["*.png"]
 homepage = "https://github.com/m-cat/cargo-deps"
 keywords = ["cargo", "dependencies", "graph", "visualization", "graphviz"]
 license = "MIT"
-name = "cargo-deps-ding"
+name = "cargo-deplist"
 readme = "README.md"
 repository = "https://github.com/m-cat/cargo-deps.git"
 version = "1.4.1"
@@ -18,7 +18,7 @@ version = "1.4.1"
 edition = "2018"
 
 [[bin]]
-name = "cargo-deps-ding"
+name = "cargo-deplist"
 path = "src/main.rs"
 
 [dependencies]
